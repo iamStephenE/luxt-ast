@@ -7,6 +7,7 @@ use std::io::{self, Write};
 
 // project libraries
 mod error;
+mod literal;
 mod scanner;
 mod token;
 mod token_type;

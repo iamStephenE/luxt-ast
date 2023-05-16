@@ -1,26 +1,16 @@
-use crate::token_type::TokenType;
+use crate::{literal::Literal, token_type::TokenType};
 use std::fmt;
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum LiteralType {
-    Number,
-    String,
-    Boolean,
-    Null,
-    Undefined,
-}
 
 #[derive(Debug)]
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
-    literal: LiteralType,
+    literal: Literal,
     line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, literal: LiteralType, line: usize) -> Token {
+    pub fn new(token_type: TokenType, lexeme: String, literal: Literal, line: usize) -> Token {
         Token {
             token_type,
             lexeme,
@@ -29,9 +19,9 @@ impl Token {
         }
     }
 
-    // adding eof token
+    // token
     pub fn eof(line: usize) -> Token {
-        Token::new(TokenType::Eof, String::new(), LiteralType::Null, line)
+        Token::new(TokenType::Eof, String::new(), Literal::Nil, line)
     }
 }
 
