@@ -1,5 +1,6 @@
 use crate::{error::LuxtError, token::Token, token_type::TokenType};
 
+// -----------------------------------------------------------------------
 pub struct Scanner<'a> {
     source: &'a [u8],
     tokens: Vec<Token>,
@@ -8,6 +9,7 @@ pub struct Scanner<'a> {
     line: usize,
 }
 
+// -----------------------------------------------------------------------
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a [u8]) -> Scanner<'a> {
         Scanner {
@@ -19,31 +21,15 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // generic helper methods
     pub fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
-    }
-
-    pub fn scan_tokens(&mut self) -> Result<&Vec<Token>, LuxtError> {
-        while !self.is_at_end() {
-            self.start = self.current;
-            self.scan_token()?;
-        }
-
-        self.tokens.push(Token::eof(self.line));
-        Ok(&self.tokens)
     }
 
     fn advance(&mut self) -> u8 {
         self.current += 1;
         self.source[self.current - 1]
-    }
-
-    fn add_token(&mut self, token_type: TokenType) {
-        // TODO(Stephen): I should probably do some error handling here...
-        let lexeme = std::str::from_utf8(&self.source[self.start..self.current])
-            .unwrap()
-            .to_string();
-        self.tokens.push(Token::new(token_type, lexeme, self.line));
     }
 
     fn match_next(&mut self, expected: u8) -> bool {
@@ -75,6 +61,20 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    fn is_digit(&self, c: u8) -> bool {
+        c >= b'0' && c <= b'9'
+    }
+
+    fn is_alpha(&self, c: u8) -> bool {
+        c >= b'a' && c <= b'z' || c >= b'A' && c <= b'Z' || c == b'_'
+    }
+
+    fn is_alpha_numeric(&self, c: u8) -> bool {
+        self.is_alpha(c) || self.is_digit(c)
+    }
+
+    // -----------------------------------------------------------------------
+    // parsing strings, numbers, and identifiers
     fn string(&mut self) {
         while self.peek() != b'"' && !self.is_at_end() {
             if self.peek() == b'\n' {
@@ -93,18 +93,6 @@ impl<'a> Scanner<'a> {
             .unwrap()
             .to_string();
         self.add_token(TokenType::String(value));
-    }
-
-    fn is_digit(&self, c: u8) -> bool {
-        c >= b'0' && c <= b'9'
-    }
-
-    fn is_alpha(&self, c: u8) -> bool {
-        c >= b'a' && c <= b'z' || c >= b'A' && c <= b'Z' || c == b'_'
-    }
-
-    fn is_alpha_numeric(&self, c: u8) -> bool {
-        self.is_alpha(c) || self.is_digit(c)
     }
 
     fn number(&mut self) {
@@ -163,6 +151,28 @@ impl<'a> Scanner<'a> {
         self.add_token(lexeme_token);
     }
 
+    // -----------------------------------------------------------------------
+    // token methods
+
+    fn add_token(&mut self, token_type: TokenType) {
+        // TODO(Stephen): I should probably do some error handling here...
+        let lexeme = std::str::from_utf8(&self.source[self.start..self.current])
+            .unwrap()
+            .to_string();
+        self.tokens.push(Token::new(token_type, lexeme, self.line));
+    }
+
+    pub fn scan_tokens(&mut self) -> Result<&Vec<Token>, LuxtError> {
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token()?;
+        }
+
+        self.tokens.push(Token::eof(self.line));
+        Ok(&self.tokens)
+    }
+
+    // main method for looking at characters
     fn scan_token(&mut self) -> Result<(), LuxtError> {
         let c: u8 = self.advance();
         match c {
