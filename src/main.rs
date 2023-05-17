@@ -7,7 +7,6 @@ use std::io::{self, Write};
 
 // project libraries
 mod error;
-mod literal;
 mod scanner;
 mod token;
 mod token_type;
@@ -59,7 +58,7 @@ fn run_prompt() -> io::Result<()> {
 // where all the meat of the program will go
 fn run(source: String) -> Result<(), LuxtError> {
     // println!("source: {:?}", source);
-    let mut scanner = Scanner::new(source);
+    let mut scanner = Scanner::new(source.as_bytes());
     let tokens = scanner.scan_tokens()?;
 
     for token in tokens {

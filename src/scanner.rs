@@ -1,15 +1,15 @@
-use crate::{error::LuxtError, literal::Literal, token::Token, token_type::TokenType};
+use crate::{error::LuxtError, token::Token, token_type::TokenType};
 
-pub struct Scanner {
-    source: String,
+pub struct Scanner<'a> {
+    source: &'a [u8],
     tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
 }
 
-impl Scanner {
-    pub fn new(source: String) -> Scanner {
+impl<'a> Scanner<'a> {
+    pub fn new(source: &'a [u8]) -> Scanner<'a> {
         Scanner {
             source,
             tokens: Vec::new(),
@@ -33,31 +33,25 @@ impl Scanner {
         Ok(&self.tokens)
     }
 
-    // helper methods
-    fn advance(&mut self) -> char {
-        // We are sure that we can unwrap here because we check the
-        // is_at_end method first. I don't like this way of getting the
-        // character but oh well for now.
-
-        // TODO(Stephen): should probably use an iterator instead of a source
-        // string but that complicates it and introduces lifetimes...
-        let next_char = self.source.chars().nth(self.current).unwrap();
+    fn advance(&mut self) -> u8 {
         self.current += 1;
-        next_char
+        self.source[self.current - 1]
     }
 
-    fn add_token(&mut self, token_type: TokenType, literal: Literal) {
-        let text = self.source[self.start..self.current].to_string();
-        self.tokens
-            .push(Token::new(token_type, text, literal, self.line));
+    fn add_token(&mut self, token_type: TokenType) {
+        // TODO(Stephen): I should probably do some error handling here...
+        let lexeme = std::str::from_utf8(&self.source[self.start..self.current])
+            .unwrap()
+            .to_string();
+        self.tokens.push(Token::new(token_type, lexeme, self.line));
     }
 
-    fn match_next(&mut self, expected: char) -> bool {
+    fn match_next(&mut self, expected: u8) -> bool {
         if self.is_at_end() {
             return false;
         }
 
-        let next_char = self.source.chars().nth(self.current).unwrap();
+        let next_char = self.source[self.current];
         if next_char != expected {
             return false;
         }
@@ -67,49 +61,49 @@ impl Scanner {
     }
 
     fn scan_token(&mut self) -> Result<(), LuxtError> {
-        let c: char = self.advance();
+        let c: u8 = self.advance();
         match c {
-            '(' => self.add_token(TokenType::LeftParen, Literal::Nil),
-            ')' => self.add_token(TokenType::RightParen, Literal::Nil),
-            '{' => self.add_token(TokenType::LeftBrace, Literal::Nil),
-            '}' => self.add_token(TokenType::RightBrace, Literal::Nil),
-            ',' => self.add_token(TokenType::Comma, Literal::Nil),
-            '.' => self.add_token(TokenType::Dot, Literal::Nil),
-            '-' => self.add_token(TokenType::Minus, Literal::Nil),
-            '+' => self.add_token(TokenType::Plus, Literal::Nil),
-            ';' => self.add_token(TokenType::SemiColon, Literal::Nil),
-            '*' => self.add_token(TokenType::Star, Literal::Nil),
-            '!' => {
-                let t = match self.match_next('=') {
+            b'(' => self.add_token(TokenType::LeftParen),
+            b')' => self.add_token(TokenType::RightParen),
+            b'{' => self.add_token(TokenType::LeftBrace),
+            b'}' => self.add_token(TokenType::RightBrace),
+            b',' => self.add_token(TokenType::Comma),
+            b'.' => self.add_token(TokenType::Dot),
+            b'-' => self.add_token(TokenType::Minus),
+            b'+' => self.add_token(TokenType::Plus),
+            b';' => self.add_token(TokenType::SemiColon),
+            b'*' => self.add_token(TokenType::Star),
+            b'!' => {
+                let t = match self.match_next(b'=') {
                     true => TokenType::BangEqual,
                     false => TokenType::Bang,
                 };
-                self.add_token(t, Literal::Nil);
+                self.add_token(t);
             }
-            '=' => {
-                let t = match self.match_next('=') {
+            b'=' => {
+                let t = match self.match_next(b'=') {
                     true => TokenType::EqualEqual,
                     false => TokenType::Equal,
                 };
-                self.add_token(t, Literal::Nil);
+                self.add_token(t);
             }
-            '>' => {
-                let t = match self.match_next('=') {
+            b'>' => {
+                let t = match self.match_next(b'=') {
                     true => TokenType::GreaterEqual,
                     false => TokenType::Greater,
                 };
-                self.add_token(t, Literal::Nil);
+                self.add_token(t);
             }
-            '<' => {
-                let t = match self.match_next('=') {
+            b'<' => {
+                let t = match self.match_next(b'=') {
                     true => TokenType::LessEqual,
                     false => TokenType::Less,
                 };
-                self.add_token(t, Literal::Nil);
+                self.add_token(t);
             }
             _ => {
                 // this should be fixed...
-                panic!("Error getting character in scan_token: {}", c == '\n');
+                panic!("Error getting character in scan_token: {}", c == b'\n');
             }
         };
         Ok(())
