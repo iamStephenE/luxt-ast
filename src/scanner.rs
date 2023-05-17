@@ -60,6 +60,109 @@ impl<'a> Scanner<'a> {
         return true;
     }
 
+    // maybe too idiomatic? lol
+    fn peek(&self) -> u8 {
+        match self.is_at_end() {
+            true => return b'\0',
+            false => self.source[self.current],
+        }
+    }
+
+    fn peek_next(&self) -> u8 {
+        match self.current + 1 >= self.source.len() {
+            true => return b'\0',
+            false => self.source[self.current + 1],
+        }
+    }
+
+    fn string(&mut self) {
+        while self.peek() != b'"' && !self.is_at_end() {
+            if self.peek() == b'\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.is_at_end() {
+            panic!("Unterminated string.");
+        }
+
+        self.advance(); // the closing "
+
+        let value = std::str::from_utf8(&self.source[self.start + 1..self.current - 1])
+            .unwrap()
+            .to_string();
+        self.add_token(TokenType::String(value));
+    }
+
+    fn is_digit(&self, c: u8) -> bool {
+        c >= b'0' && c <= b'9'
+    }
+
+    fn is_alpha(&self, c: u8) -> bool {
+        c >= b'a' && c <= b'z' || c >= b'A' && c <= b'Z' || c == b'_'
+    }
+
+    fn is_alpha_numeric(&self, c: u8) -> bool {
+        self.is_alpha(c) || self.is_digit(c)
+    }
+
+    fn number(&mut self) {
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        // look for fractional part.
+        if self.peek() == b'.' && self.is_digit(self.peek_next()) {
+            // consume the "."
+            self.advance();
+        }
+
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        let lexeme = std::str::from_utf8(&self.source[self.start..self.current])
+            .unwrap()
+            .to_string();
+        let value = lexeme.parse::<f64>().unwrap();
+        self.add_token(TokenType::Number(value));
+    }
+
+    fn get_lexeme_token(&self, lexeme: &str) -> TokenType {
+        match lexeme {
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier(lexeme.to_string()),
+        }
+    }
+
+    fn identifier(&mut self) {
+        while self.is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+
+        // here we need to determine if the lexeme is a keyword
+        // if its not then it is an identifier
+        let lexeme = std::str::from_utf8(&self.source[self.start..self.current]).unwrap();
+        let lexeme_token = self.get_lexeme_token(lexeme);
+        self.add_token(lexeme_token);
+    }
+
     fn scan_token(&mut self) -> Result<(), LuxtError> {
         let c: u8 = self.advance();
         match c {
@@ -101,9 +204,28 @@ impl<'a> Scanner<'a> {
                 };
                 self.add_token(t);
             }
+            b'/' => {
+                if self.match_next(b'/') {
+                    while self.peek() != b'\n' && !self.is_at_end() {
+                        self.advance();
+                    }
+                } else {
+                    self.add_token(TokenType::Slash)
+                }
+            }
+            b' ' | b'\r' | b'\t' => {
+                // ignore white space
+            }
+            b'\n' => self.line += 1,
+            b'"' => self.string(),
             _ => {
-                // this should be fixed...
-                panic!("Error getting character in scan_token: {}", c == b'\n');
+                if self.is_digit(c) {
+                    self.number();
+                } else if self.is_alpha(c) {
+                    self.identifier();
+                } else {
+                    panic!("Unexpected character: {}", c);
+                }
             }
         };
         Ok(())

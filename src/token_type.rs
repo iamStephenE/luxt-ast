@@ -25,10 +25,9 @@ pub enum TokenType {
     LessEqual,
 
     // Literals.
-    // NOTE: These are literal tokens Not to be confused with literal types
-    Identifier,
-    String,
-    Number,
+    Identifier(String),
+    String(String),
+    Number(f64),
 
     // Keywords.
     And,
