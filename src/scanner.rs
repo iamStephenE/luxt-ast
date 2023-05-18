@@ -1,4 +1,8 @@
-use crate::{error::LuxtError, token::Token, token_type::TokenType};
+use crate::{
+    error::{CodeLocation, LuxtError},
+    token::Token,
+    token_type::TokenType,
+};
 
 // -----------------------------------------------------------------------
 pub struct Scanner<'a> {
@@ -7,6 +11,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
+    line_offset: usize,
 }
 
 // -----------------------------------------------------------------------
@@ -18,6 +23,7 @@ impl<'a> Scanner<'a> {
             start: 0,
             current: 0,
             line: 1,
+            line_offset: 0,
         }
     }
 
@@ -29,6 +35,7 @@ impl<'a> Scanner<'a> {
 
     fn advance(&mut self) -> u8 {
         self.current += 1;
+        self.line_offset += 1;
         self.source[self.current - 1]
     }
 
@@ -75,24 +82,31 @@ impl<'a> Scanner<'a> {
 
     // -----------------------------------------------------------------------
     // parsing strings, numbers, and identifiers
-    fn string(&mut self) {
+    fn string(&mut self) -> Result<(), LuxtError> {
         while self.peek() != b'"' && !self.is_at_end() {
             if self.peek() == b'\n' {
                 self.line += 1;
+                self.line_offset = 0;
             }
             self.advance();
         }
 
         if self.is_at_end() {
-            panic!("Unterminated string.");
+            // note the -1 is needed here due to previous while loop
+            return Err(LuxtError::UnterminatedString {
+                location: CodeLocation::new(self.line - 1, self.start),
+            });
         }
 
         self.advance(); // the closing "
 
+        // Note that we can safely unwrap this because we already check prior that
+        // all characters we come across are utf8.
         let value = std::str::from_utf8(&self.source[self.start + 1..self.current - 1])
             .unwrap()
             .to_string();
         self.add_token(TokenType::String(value));
+        Ok(())
     }
 
     fn number(&mut self) {
@@ -155,7 +169,6 @@ impl<'a> Scanner<'a> {
     // token methods
 
     fn add_token(&mut self, token_type: TokenType) {
-        // TODO(Stephen): I should probably do some error handling here...
         let lexeme = std::str::from_utf8(&self.source[self.start..self.current])
             .unwrap()
             .to_string();
@@ -226,15 +239,20 @@ impl<'a> Scanner<'a> {
             b' ' | b'\r' | b'\t' => {
                 // ignore white space
             }
-            b'\n' => self.line += 1,
-            b'"' => self.string(),
+            b'\n' => {
+                self.line += 1;
+                self.line_offset = 0;
+            }
+            b'"' => self.string()?,
             _ => {
                 if self.is_digit(c) {
                     self.number();
                 } else if self.is_alpha(c) {
                     self.identifier();
                 } else {
-                    panic!("Unexpected character: {}", c);
+                    return Err(LuxtError::InvalidUtf8Character {
+                        location: CodeLocation::new(self.line, self.line_offset),
+                    });
                 }
             }
         };

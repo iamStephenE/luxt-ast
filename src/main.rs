@@ -22,7 +22,7 @@ fn run_file(file_name: &str) -> io::Result<()> {
     match run(buffer) {
         Ok(_) => println!("No error running file"),
         Err(luxt_err) => {
-            luxt_err.report("where");
+            eprintln!("{}", luxt_err);
             std::process::exit(65);
         }
     }
@@ -48,7 +48,9 @@ fn run_prompt() -> io::Result<()> {
         // is just running individual lines
         match run(input_buffer) {
             Ok(_) => println!("No error running line"),
-            Err(luxt_err) => luxt_err.report("where"),
+            Err(luxt_err) => {
+                eprintln!("{}", luxt_err);
+            }
         }
     }
     Ok(())

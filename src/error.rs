@@ -1,19 +1,40 @@
+use core::fmt;
 // -----------------------------------------------------------------------
 // Mechanism for error handling, maybe look into making this better later
 
 #[derive(Debug)]
-pub struct LuxtError {
+pub struct CodeLocation {
     line: usize,
-    message: String,
+    offset: usize,
 }
 
-impl LuxtError {
-    #[allow(dead_code)]
-    pub fn error(line: usize, message: String) -> LuxtError {
-        LuxtError { line, message }
+impl CodeLocation {
+    pub fn new(line: usize, offset: usize) -> CodeLocation {
+        CodeLocation { line, offset }
     }
+}
 
-    pub fn report(&self, loc: &str) {
-        eprintln!("[line {}] Error{}: {}", self.line, loc, self.message)
+impl fmt::Display for CodeLocation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[line {}, offset {}]:", self.line, self.offset)
+    }
+}
+
+#[derive(Debug)]
+pub enum LuxtError {
+    InvalidUtf8Character { location: CodeLocation },
+    UnterminatedString { location: CodeLocation },
+}
+
+impl fmt::Display for LuxtError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LuxtError::InvalidUtf8Character { location } => {
+                write!(f, "{} Invalid UTF-8 character.", location)
+            }
+            LuxtError::UnterminatedString { location } => {
+                write!(f, "{} Unterminated string quote (\"...).", location)
+            }
+        }
     }
 }
