@@ -16,7 +16,7 @@ impl CodeLocation {
 
 impl fmt::Display for CodeLocation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[line {}, offset {}]:", self.line, self.offset)
+        write!(f, "[line {}, offset {}]", self.line, self.offset)
     }
 }
 
@@ -30,10 +30,10 @@ impl fmt::Display for LuxtError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LuxtError::InvalidUtf8Character { location } => {
-                write!(f, "{} Invalid UTF-8 character.", location)
+                write!(f, "[ERROR]: Invalid UTF-8 character at {}.", location)
             }
             LuxtError::UnterminatedString { location } => {
-                write!(f, "{} Unterminated string quote (\"...).", location)
+                write!(f, "[ERROR]: Unterminated string quote at {}.", location)
             }
         }
     }
